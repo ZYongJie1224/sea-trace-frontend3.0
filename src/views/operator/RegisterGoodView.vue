@@ -13,17 +13,44 @@
         :rules="rules"
         label-position="top"
       >
-        <el-form-item label="货物ID" prop="good_id">
-          <el-input v-model="form.good_id" placeholder="请输入货物ID">
-            <template #prepend>PROD</template>
-          </el-input>
-          <div class="form-tip">
-            建议使用日期+序号作为ID，例如: 20250513001
-          </div>
-        </el-form-item>
-        
         <el-form-item label="货物名称" prop="good_name">
           <el-input v-model="form.good_name" placeholder="请输入货物名称" />
+        </el-form-item>
+        
+        <el-form-item label="批次号" prop="batch_number">
+          <el-input v-model="form.batch_number" placeholder="请输入批次号" />
+        </el-form-item>
+        
+        <el-form-item label="生产地点" prop="location">
+          <el-input v-model="form.location" placeholder="请输入生产地点" />
+        </el-form-item>
+        
+        <el-form-item label="保质期" prop="expiry_date">
+          <el-date-picker
+            v-model="form.expiry_date"
+            type="date"
+            placeholder="选择保质期日期"
+            format="YYYY-MM-DD"
+            value-format="YYYY-MM-DD"
+            :disabled-date="disabledDate"
+          />
+        </el-form-item>
+        
+        <el-form-item label="质量等级" prop="quality_level">
+          <el-select v-model="form.quality_level" placeholder="请选择质量等级">
+            <el-option label="优" value="A" />
+            <el-option label="良" value="B" />
+            <el-option label="合格" value="C" />
+          </el-select>
+        </el-form-item>
+        
+        <el-form-item label="批次信息" prop="batch_info">
+          <el-input 
+            v-model="form.batch_info" 
+            type="textarea" 
+            rows="3"
+            placeholder="请输入批次相关信息（生产批次、工艺等）" 
+          />
         </el-form-item>
         
         <el-form-item label="货物描述" prop="description">
@@ -55,9 +82,11 @@
         >
           <template #extra>
             <div class="result-info">
-              <p><strong>货物ID:</strong> PROD{{ form.good_id }}</p>
+              <p><strong>货物ID:</strong> {{ registeredGoodID }}</p>
               <p><strong>货物名称:</strong> {{ form.good_name }}</p>
-              <p><strong>交易哈希:</strong> {{ txHash }}</p>
+              <p><strong>批次号:</strong> {{ form.batch_number }}</p>
+              <p><strong>保质期:</strong> {{ form.expiry_date }}</p>
+              <p><strong>区块链交易哈希:</strong> {{ txHash }}</p>
               <p><strong>注册时间:</strong> {{ currentTime }}</p>
             </div>
           </template>
@@ -83,26 +112,37 @@ import { useAuthStore } from '@/stores/auth';
 const authStore = useAuthStore();
 const loading = ref(false);
 const successDialogVisible = ref(false);
+const registeredGoodID = ref('');
 const txHash = ref('');
 const currentTime = ref('');
 const formRef = ref(null);
 
 const form = reactive({
-  good_id: '',
   good_name: '',
-  description: ''
+  batch_number: '',
+  description: '',
+  location: '',
+  batch_info: '',
+  quality_level: '',
+  expiry_date: ''
 });
 
+const disabledDate = (time) => {
+  return time.getTime() < Date.now();
+};
+
 const rules = {
-  good_id: [
-    { required: true, message: '请输入货物ID', trigger: 'blur' },
-    { pattern: /^\d+$/, message: '货物ID只能包含数字', trigger: 'blur' }
-  ],
   good_name: [
     { required: true, message: '请输入货物名称', trigger: 'blur' }
   ],
+  location: [
+    { required: true, message: '请输入生产地点', trigger: 'blur' }
+  ],
+  expiry_date: [
+    { required: true, message: '请选择保质期日期', trigger: 'change' }
+  ],
   description: [
-    { required: true, message: '请输入货物描述', trigger: 'blur' }
+    { required: false, message: '请输入货物描述', trigger: 'blur' }
   ]
 };
 
@@ -114,18 +154,22 @@ const submitForm = async () => {
     
     loading.value = true;
     try {
-      // 拼接完整的货物ID
-      const fullGoodId = 'PROD' + form.good_id;
-      
       // 提交注册请求
-      const result = await traceApi.registerGood({
-        good_id: fullGoodId,
+      const response = await traceApi.registerGood({
         good_name: form.good_name,
-        description: form.description
+        batch_number: form.batch_number,
+        description: form.description,
+        location: form.location,
+        batch_info: form.batch_info,
+        quality_level: form.quality_level,
+        expiry_date: form.expiry_date
       });
       
       // 设置成功对话框数据
-      txHash.value = result.tx_hash;
+      const result = response;
+      console.log(response);
+      registeredGoodID.value = result.good_id;
+      txHash.value = result.blockchain_tx_hash;
       currentTime.value = new Date().toLocaleString();
       successDialogVisible.value = true;
       

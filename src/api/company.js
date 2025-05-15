@@ -79,6 +79,10 @@ const companyAdminApi = {
   createCompanyAdmin(data) {
     return api.post('/api/su/company/admin/create', data);
   },
+    // 创建公司
+  createCompany(data) {
+    return api.post('/api/su/company/create', data);
+  },
   /**
    * 删除操作员
    * @param {number|string} id - 操作员ID

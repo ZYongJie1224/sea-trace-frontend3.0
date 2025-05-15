@@ -190,6 +190,7 @@ import { ElMessage, ElMessageBox } from 'element-plus';
 import { Plus, Search } from '@element-plus/icons-vue';
 import companyApi from '@/api/company';
 import userApi from '@/api/user';
+import admin from '../../api/admin';
 
 const companies = ref([]);
 const loading = ref(false);
@@ -355,7 +356,7 @@ const handleDelete = (row) => {
   )
     .then(async () => {
       try {
-        await companyApi.deleteCompany(row.id);
+        await admin.deleteCompany(row.id);
         ElMessage.success('删除成功');
         getCompanies();
       } catch (error) {

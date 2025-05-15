@@ -7,10 +7,7 @@ export default {
   },
   
  
-  // 创建公司
-  createCompany(data) {
-    return api.post('/api/su/company/create', data);
-  },
+
   
   // 更新公司信息
   updateCompany(id, data) {

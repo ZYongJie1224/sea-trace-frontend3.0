@@ -3,7 +3,7 @@
     <el-card class="deliver-card">
       <template #header>
         <div class="card-header">
-          <h2>货物收货登记</h2>
+          <h2>货物交付登记</h2>
         </div>
       </template>
       
@@ -14,25 +14,44 @@
         label-position="top"
       >
         <el-form-item label="货物ID" prop="good_id">
-          <el-input v-model="form.good_id" placeholder="请输入货物ID">
-            <template #prepend>PROD</template>
-          </el-input>
+          <el-input v-model="form.good_id" placeholder="请输入货物ID" />
           <div class="form-tip">
-            输入待收货货物的ID编号
+            输入待交付货物的完整ID，该货物必须完成验货
           </div>
         </el-form-item>
         
-        <el-form-item label="收货信息" prop="delivery_info">
+        <el-form-item label="交付地点" prop="location">
+          <el-input v-model="form.location" placeholder="请输入交付地点" />
+        </el-form-item>
+        
+        <el-form-item label="接收人" prop="recipient_name">
+          <el-input v-model="form.recipient_name" placeholder="请输入接收人姓名" />
+        </el-form-item>
+        
+        <el-form-item label="接收人联系方式" prop="recipient_contact">
+          <el-input v-model="form.recipient_contact" placeholder="请输入接收人联系方式" />
+        </el-form-item>
+        
+        <el-form-item label="交付信息" prop="delivery_info">
           <el-input 
             v-model="form.delivery_info" 
             type="textarea" 
             rows="4"
-            placeholder="请输入收货详细信息（收货时间、地点、状态等）" 
+            placeholder="请输入交付详细信息（交付时间、交付状态、包装情况等）" 
+          />
+        </el-form-item>
+        
+        <el-form-item label="备注" prop="notes">
+          <el-input 
+            v-model="form.notes" 
+            type="textarea" 
+            rows="2"
+            placeholder="其他需要说明的情况（选填）" 
           />
         </el-form-item>
         
         <el-form-item>
-          <el-button type="primary" @click="submitForm" :loading="loading">提交登记</el-button>
+          <el-button type="primary" @click="submitForm" :loading="loading">提交交付</el-button>
           <el-button @click="resetForm">重置</el-button>
         </el-form-item>
       </el-form>
@@ -40,20 +59,24 @@
     
     <el-dialog
       v-model="successDialogVisible"
-      title="收货登记成功"
+      title="交付登记成功"
       width="500px"
     >
       <div class="success-content">
         <el-result
           icon="success"
-          title="货物收货登记成功"
-          sub-title="货物收货信息已上链，标志着该货物已完成全部溯源流程"
+          title="货物交付登记成功"
+          sub-title="货物交付信息已上链，标志着该货物溯源流程全部完成"
         >
           <template #extra>
             <div class="result-info">
-              <p><strong>货物ID:</strong> PROD{{ form.good_id }}</p>
-              <p><strong>交易哈希:</strong> {{ txHash }}</p>
+              <p><strong>货物ID:</strong> {{ form.good_id }}</p>
+              <p><strong>交付地点:</strong> {{ form.location }}</p>
+              <p><strong>接收人:</strong> {{ form.recipient_name }}</p>
+              <p><strong>接收人联系方式:</strong> {{ form.recipient_contact }}</p>
+              <p><strong>区块链交易哈希:</strong> {{ txHash }}</p>
               <p><strong>登记时间:</strong> {{ currentTime }}</p>
+              <p><strong>登记人员:</strong> {{ currentUser }}</p>
             </div>
           </template>
         </el-result>
@@ -75,26 +98,41 @@ import { ref, reactive } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import traceApi from '@/api/trace';
+import { useAuthStore } from '@/stores/auth';
 
 const router = useRouter();
+const authStore = useAuthStore();
 const loading = ref(false);
 const successDialogVisible = ref(false);
 const txHash = ref('');
-const currentTime = ref('');
+const currentTime = ref('2025-05-15 08:36:52'); // 使用提供的当前时间
+const currentUser = ref('ZYongJie1224'); // 使用提供的当前用户
 const formRef = ref(null);
 
 const form = reactive({
   good_id: '',
-  delivery_info: ''
+  location: '',
+  recipient_name: '',
+  recipient_contact: '',
+  delivery_info: '',
+  notes: ''
 });
 
 const rules = {
   good_id: [
-    { required: true, message: '请输入货物ID', trigger: 'blur' },
-    { pattern: /^\d+$/, message: '货物ID只能包含数字', trigger: 'blur' }
+    { required: true, message: '请输入货物ID', trigger: 'blur' }
+  ],
+  location: [
+    { required: true, message: '请输入交付地点', trigger: 'blur' }
+  ],
+  recipient_name: [
+    { required: true, message: '请输入接收人姓名', trigger: 'blur' }
+  ],
+  recipient_contact: [
+    { required: true, message: '请输入接收人联系方式', trigger: 'blur' }
   ],
   delivery_info: [
-    { required: true, message: '请输入收货信息', trigger: 'blur' }
+    { required: true, message: '请输入交付信息', trigger: 'blur' }
   ]
 };
 
@@ -106,24 +144,32 @@ const submitForm = async () => {
     
     loading.value = true;
     try {
-      // 拼接完整的货物ID
-      const fullGoodId = 'PROD' + form.good_id;
+      // 构建提交数据，字段名与后端期望的一致
+      const deliverData = {
+        good_id: form.good_id,
+        location: form.location,
+        recipient_name: form.recipient_name,
+        recipient_contact: form.recipient_contact,
+        delivery_info: form.delivery_info,
+        notes: form.notes || ''
+      };
       
-      // 提交收货登记请求
-      const result = await traceApi.deliverGood({
-        good_id: fullGoodId,
-        delivery_info: form.delivery_info
-      });
+      // 提交交付登记请求（根据您的API封装）
+      const response = await traceApi.deliverGood(deliverData);
       
       // 设置成功对话框数据
-      txHash.value = result.tx_hash;
-      currentTime.value = new Date().toLocaleString();
+      const result = response;
+      txHash.value = result.blockchain_tx_hash || result.tx_hash || '';
       successDialogVisible.value = true;
       
-      ElMessage.success('货物收货登记成功');
+      ElMessage.success('货物交付登记成功');
     } catch (error) {
-      console.error('收货登记失败:', error);
-      ElMessage.error(error.message || '登记失败，请稍后重试');
+      console.error('交付登记失败:', error);
+      if (error.response && error.response.data && error.response.data.errorMessage) {
+        ElMessage.error(error.response.data.errorMessage);
+      } else {
+        ElMessage.error(error.message || '登记失败，请稍后重试');
+      }
     } finally {
       loading.value = false;
     }
@@ -142,8 +188,7 @@ const handleDeliverAnother = () => {
 };
 
 const viewTrace = () => {
-  const fullGoodId = 'PROD' + form.good_id;
-  router.push(`/trace?id=${fullGoodId}`);
+  router.push(`/trace?id=${form.good_id}`);
   successDialogVisible.value = false;
 };
 </script>

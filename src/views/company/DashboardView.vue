@@ -334,7 +334,7 @@ const submitCompanyEdit = async () => {
 
 // 跳转到操作员管理页面
 const navigateToOperatorManagement = () => {
-  router.push('/company/operators');
+  router.push('/company/operator');
 };
 
 onMounted(() => {

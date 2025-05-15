@@ -31,7 +31,7 @@
       <el-col :xs="24" :sm="12" :md="8">
         <el-card shadow="hover" class="stat-card">
           <div class="stat-content">
-            <el-icon class="stat-icon company-icon"><Office /></el-icon>
+            <el-icon class="stat-icon company-icon"><OfficeBuilding /></el-icon>
             <div class="stat-info">
               <div class="stat-value">{{ getCompanyTypeName(companyInfo.company_type) }}</div>
               <div class="stat-label">公司类型</div>
